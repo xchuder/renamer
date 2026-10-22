@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alvis Renamer</title>
+<meta name="description" content="Rename files in bulk, right in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: brand-blue header band, then a two-column workspace (settings steps left, preview table right) that stacks on phones, then a small privacy footer.
+   Tokens follow the MWIT Web design system (light theme only). */
+:root {
+  --brand-blue: #1a3c9f;
+  --brand-navy: #23315e;
+  --brand-yellow: #ffe165;
+  --ink: #2b2a33;
+  --ink-muted: #5f5d68;
+  --on-blue: #ffffff;
+  --surface-page: #f2f3ed;
+  --surface-card: #ffffff;
+  --surface-cream: #f6f0da;
+  --surface-tint: #eaf5fd;
+  --line: #dcdbd2;
+  --signal-red: #bf0103;
+
+  --font-display: Anuphan, "Leelawadee UI", "Noto Sans Thai", system-ui, sans-serif;
+  --font-text: Sarabun, "Leelawadee UI", "Noto Sans Thai", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --wrap: 1200px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(20, 30, 70, 0.06);
+  --shadow-md: 0 1px 2px rgba(20, 30, 70, 0.06), 0 10px 30px rgba(20, 30, 70, 0.1);
+  --duration-fast: 0.15s;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--surface-page); color: var(--ink); }
+body { font: 400 1rem/1.7 var(--font-text); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.3; text-wrap: balance; margin: 0; }
+:focus-visible { outline: 3px solid var(--brand-blue); outline-offset: 3px; border-radius: var(--radius-sm); }
+.on-dark :focus-visible { outline-color: var(--brand-yellow); }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header */
+.app-header { background: var(--brand-blue); color: var(--on-blue); }
+.app-header .wrap { display: flex; align-items: center; gap: var(--space-4); padding-block: var(--space-5); flex-wrap: wrap; }
+.mark { width: 48px; height: 48px; flex: none; }
+.app-name { font: 700 clamp(1.5rem, 1.2rem + 1.2vw, 2rem)/1.3 var(--font-display); letter-spacing: 0.01em; }
+.tagline { margin: 0; font: 600 0.85rem/1.5 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-yellow); }
+.header-note { margin-left: auto; font-size: 0.9rem; line-height: 1.5; max-width: 34ch; opacity: 0.92; }
+
+/* Workspace */
+main { padding-block: var(--space-6) var(--space-7); }
+.workspace { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+@media (max-width: 900px) { .workspace { grid-template-columns: minmax(0, 1fr); } .header-note { margin-left: 0; } }
+.steps { display: flex; flex-direction: column; gap: var(--space-4); }
+.panel { background: var(--surface-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.step-head { display: flex; align-items: center; gap: var(--space-3); }
+.step-no { width: 28px; height: 28px; flex: none; border-radius: var(--radius-pill); background: var(--surface-tint); color: var(--brand-blue); font: 700 0.9rem/28px var(--font-display); text-align: center; }
+.step-head h2 { font-size: 1.15rem; }
+.hint { margin: 0; color: var(--ink-muted); font-size: 0.9rem; line-height: 1.5; }
+
+/* Drop zone */
+.drop { border: 2px dashed var(--line); border-radius: var(--radius-md); padding: var(--space-5) var(--space-4); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); transition: background var(--duration-fast), border-color var(--duration-fast); }
+.drop.is-over { background: var(--surface-tint); border-color: var(--brand-blue); }
+.drop svg { width: 36px; height: 36px; color: var(--brand-blue); }
+.drop strong { font: 600 1rem/1.5 var(--font-display); }
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.drop .btn-row { justify-content: center; }
+
+/* Buttons (MWIT square buttons) */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5em; min-height: 44px; padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); font: 600 0.9rem/1.5 var(--font-display); border: 1.5px solid transparent; cursor: pointer; transition: transform var(--duration-fast), background var(--duration-fast), color var(--duration-fast); }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn svg { width: 1.2em; height: 1.2em; }
+.btn--dark { background: var(--brand-blue); color: var(--on-blue); }
+.btn--dark:hover:not(:disabled) { background: var(--brand-navy); }
+.btn--line { background: var(--surface-card); color: var(--brand-blue); border-color: var(--brand-blue); }
+.btn--line:hover:not(:disabled) { background: var(--surface-tint); }
+.btn--gold { background: var(--brand-yellow); color: var(--brand-navy); }
+.btn--quiet { background: transparent; color: var(--ink-muted); border-color: var(--line); }
+.btn--quiet:hover:not(:disabled) { color: var(--ink); background: var(--surface-page); }
+.btn--sm { min-height: 36px; padding: var(--space-1) var(--space-3); font-size: 0.85rem; }
+.btn--block { width: 100%; }
+
+/* Form controls */
+.field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.field > span { font: 600 0.9rem/1.5 var(--font-display); }
+.field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
+input[type="text"], input[type="number"], select {
+  width: 100%; min-height: 44px; padding: var(--space-2) var(--space-3);
+  font: 400 1rem/1.5 var(--font-text); color: var(--ink); background: var(--surface-card);
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+}
+input[type="text"]:hover, input[type="number"]:hover, select:hover { border-color: var(--ink-muted); }
+input:focus-visible, select:focus-visible { outline-offset: 1px; border-color: var(--brand-blue); }
+input:disabled { background: var(--surface-page); color: var(--ink-muted); }
+.check { display: flex; align-items: flex-start; gap: var(--space-2); font-size: 0.95rem; line-height: 1.5; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--brand-blue); flex: none; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); background: var(--surface-page); border-radius: var(--radius-md); padding: var(--space-1); }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; }
+.seg span { display: block; text-align: center; padding: var(--space-2); border-radius: var(--radius-sm); font: 600 0.9rem/1.5 var(--font-display); color: var(--ink-muted); cursor: pointer; }
+.seg input:checked + span { background: var(--surface-card); color: var(--brand-blue); box-shadow: var(--shadow-sm); }
+.seg input:focus-visible + span { outline: 3px solid var(--brand-blue); outline-offset: 1px; }
+.example { background: var(--surface-tint); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); font: 400 0.85rem/1.6 var(--font-mono); color: var(--brand-navy); overflow-wrap: anywhere; }
+.example b { font-family: var(--font-display); font-weight: 600; color: var(--ink-muted); font-size: 0.8rem; display: block; }
+.dest { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1.5px solid var(--line); border-radius: var(--radius-sm); font-size: 0.95rem; min-height: 44px; overflow-wrap: anywhere; }
+.dest svg { width: 20px; height: 20px; color: var(--brand-blue); flex: none; }
+.dest.is-empty { color: var(--ink-muted); border-style: dashed; }
+.notice { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-cream); font-size: 0.9rem; line-height: 1.5; }
+
+/* Preview */
+.preview { gap: var(--space-4); }
+.preview-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.preview-head h2 { font-size: 1.35rem; }
+.summary { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); color: var(--ink-muted); font-size: 0.9rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.summary b { color: var(--ink); font-weight: 600; }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.toolbar select { width: auto; min-height: 36px; padding: var(--space-1) var(--space-3); font-size: 0.9rem; }
+.sample-bar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; background: var(--brand-yellow); color: var(--brand-navy); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); font: 600 0.9rem/1.5 var(--font-display); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); max-height: 62vh; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; line-height: 1.5; }
+thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-page); text-align: left; font: 600 0.82rem/1.5 var(--font-display); color: var(--ink-muted); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #fafbf7; }
+.c-no { width: 1%; color: var(--ink-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.c-old { font-family: var(--font-mono); font-size: 0.85rem; overflow-wrap: anywhere; min-width: 160px; }
+.c-old small { display: block; font-family: var(--font-text); color: var(--ink-muted); font-size: 0.8rem; }
+.c-new { min-width: 240px; }
+.new-name { display: flex; align-items: center; gap: var(--space-1); }
+.new-name input { min-height: 36px; padding: var(--space-1) var(--space-2); font: 400 0.88rem/1.5 var(--font-mono); }
+.new-name input.is-custom { border-color: var(--brand-yellow); background: #fffbe8; }
+.ext { font: 400 0.85rem/1.5 var(--font-mono); color: var(--ink-muted); white-space: nowrap; }
+.c-state { white-space: nowrap; }
+.c-act { width: 1%; white-space: nowrap; }
+.tag { display: inline-block; font: 600 0.78rem/1.5 var(--font-display); padding: 2px var(--space-2); border-radius: var(--radius-pill); background: var(--surface-tint); color: var(--brand-blue); }
+.tag--custom { background: var(--brand-yellow); color: var(--brand-navy); }
+.tag--warn { background: #fdecec; color: var(--signal-red); }
+.tag--same { background: var(--surface-page); color: var(--ink-muted); }
+.icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; background: transparent; color: var(--ink-muted); border-radius: var(--radius-sm); cursor: pointer; }
+.icon-btn:hover { background: var(--surface-page); color: var(--ink); }
+.icon-btn svg { width: 18px; height: 18px; }
+.empty { padding: var(--space-7) var(--space-4); text-align: center; color: var(--ink-muted); }
+.status { min-height: 1.5em; margin: 0; font-size: 0.95rem; line-height: 1.5; }
+.status.is-ok { color: #1b6b3a; }
+.status.is-err { color: var(--signal-red); }
+progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
+
+/* Footer */
+.app-footer { border-top: 1px solid var(--line); background: var(--surface-cream); }
+.app-footer .wrap { padding-block: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); justify-content: space-between; font-size: 0.8rem; line-height: 1.6; color: var(--ink-muted); }
+.app-footer p { margin: 0; max-width: 88ch; }
+.app-footer b { color: var(--ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="app-header on-dark">
+  <div class="wrap">
+    <svg class="mark" viewBox="0 0 48 48" aria-hidden="true" fill="none">
+      <rect x="3" y="7" width="20" height="26" rx="4" fill="rgba(255,255,255,0.16)" stroke="#ffffff" stroke-width="2"/>
+      <rect x="25" y="15" width="20" height="26" rx="4" fill="#ffe165"/>
+      <path d="M8 15h10M8 20h7" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <path d="M30 23h10M30 28h7" stroke="#23315e" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14 38c0 3 2 5 6 5h3m0 0-3-3m3 3-3 3" stroke="#ffe165" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1 class="app-name">Alvis Renamer</h1>
+      <p class="tagline">Rename in bulk. Right in your browser.</p>
+    </div>
+    <p class="header-note">ตั้งชื่อไฟล์ใหม่ทีละหลายไฟล์ แล้วบันทึกเป็นสำเนาลงโฟลเดอร์ที่เลือก ไฟล์ต้นฉบับไม่ถูกแก้ไข</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap workspace">
+    <div class="steps">
+      <section class="panel" aria-labelledby="s1">
+        <div class="step-head"><span class="step-no">1</span><h2 id="s1">เพิ่มไฟล์หรือโฟลเดอร์</h2></div>
+        <div class="drop" id="drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          <strong>ลากไฟล์หรือโฟลเดอร์มาวางที่นี่</strong>
+          <div class="btn-row">
+            <button type="button" class="btn btn--dark" id="pickFiles">เลือกไฟล์</button>
+            <button type="button" class="btn btn--line" id="pickFolder">เลือกโฟลเดอร์</button>
+          </div>
+          <input type="file" id="fileInput" multiple hidden>
+          <input type="file" id="folderInput" webkitdirectory multiple hidden>
+        </div>
+        <p class="hint">ถ้าเพิ่มโฟลเดอร์ แอปจะจำโครงสร้างโฟลเดอร์ย่อยไว้ด้วย</p>
+      </section>
+
+      <section class="panel" aria-labelledby="s2">
+        <div class="step-head"><span class="step-no">2</span><h2 id="s2">ตั้งชื่อใหม่</h2></div>
+        <div class="seg" role="radiogroup" aria-label="รูปแบบการตั้งชื่อ">
+          <label><input type="radio" name="mode" value="replace" id="modeReplace" checked><span>ตั้งชื่อใหม่ทั้งหมด</span></label>
+          <label><input type="radio" name="mode" value="affix" id="modeAffix"><span>เติมคำต้น/ท้ายชื่อ</span></label>
+        </div>
+        <div id="replaceFields" class="field">
+          <label class="field" for="newName"><span>ชื่อใหม่</span>
+            <input type="text" id="newName" placeholder="เช่น ภาพกิจกรรม" autocomplete="off">
+          </label>
+          <p class="hint">ทุกไฟล์จะใช้ชื่อนี้ และใส่เลขลำดับให้อัตโนมัติ นามสกุลไฟล์คงเดิม</p>
+        </div>
+        <div id="affixFields" class="field-row" hidden>
+          <label class="field" for="prefix"><span>คำขึ้นต้น</span><input type="text" id="prefix" placeholder="เช่น 2569_" autocomplete="off"></label>
+          <label class="field" for="suffix"><span>คำลงท้าย</span><input type="text" id="suffix" placeholder="เช่น _final" autocomplete="off"></label>
+        </div>
+        <p class="hint">แก้ชื่อรายไฟล์ได้ในตารางด้านขวา</p>
+      </section>
+
+      <section class="panel" aria-labelledby="s3">
+        <div class="step-head"><span class="step-no">3</span><h2 id="s3">เลขกำกับเมื่อชื่อซ้ำ</h2></div>
+        <div class="field-row">
+          <label class="field" for="sep"><span>รูปแบบ</span>
+            <select id="sep">
+              <option value="_{n}">ชื่อ_1</option>
+              <option value="-{n}">ชื่อ-1</option>
+              <option value=" ({n})">ชื่อ (1)</option>
+              <option value=" {n}">ชื่อ 1</option>
+              <option value=".{n}">ชื่อ.1</option>
+              <option value="custom">กำหนดเอง</option>
+            </select>
+          </label>
+          <label class="field" for="digits"><span>จำนวนหลัก</span>
+            <select id="digits">
+              <option value="1">1, 2, 3</option>
+              <option value="2">01, 02, 03</option>
+              <option value="3">001, 002, 003</option>
+            </select>
+          </label>
+        </div>
+        <label class="field" for="customTpl" id="customWrap" hidden><span>รูปแบบที่กำหนดเอง (ใช้ {n} แทนตัวเลข)</span>
+          <input type="text" id="customTpl" value="_v{n}" autocomplete="off">
+        </label>
+        <div class="field-row">
+          <label class="field" for="startAt"><span>เริ่มนับที่</span><input type="number" id="startAt" value="1" min="0" step="1"></label>
+          <div class="field" style="justify-content:flex-end">
+            <label class="check" for="numberAll"><input type="checkbox" id="numberAll">ใส่เลขให้ไฟล์แรกด้วย</label>
+          </div>
+        </div>
+        <div class="example" id="example" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="s4">
+        <div class="step-head"><span class="step-no">4</span><h2 id="s4">บันทึกไฟล์ชื่อใหม่</h2></div>
+        <label class="check" for="keepTree"><input type="checkbox" id="keepTree" checked>คงโครงสร้างโฟลเดอร์ย่อย</label>
+        <div id="fsBlock" class="field">
+          <span class="field" style="font:600 0.9rem/1.5 var(--font-display)">โฟลเดอร์ปลายทาง</span>
+          <div class="dest is-empty" id="destLabel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            <span id="destName">ยังไม่ได้เลือก</span>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn btn--line" id="pickDest">เลือกโฟลเดอร์ปลายทาง</button>
+            <button type="button" class="btn btn--dark" id="saveBtn" disabled>บันทึกลงโฟลเดอร์</button>
+          </div>
+        </div>
+        <p class="notice" id="fsNote" hidden></p>
+        <button type="button" class="btn btn--quiet btn--block" id="zipBtn">ดาวน์โหลดเป็นไฟล์ ZIP แทน</button>
+        <progress id="progress" max="100" value="0" hidden></progress>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <p class="hint">แอปจะไม่เขียนทับไฟล์ที่มีอยู่แล้วในปลายทาง หากชื่อชนกันจะใส่เลขกำกับตามข้อ 3</p>
+      </section>
+    </div>
+
+    <section class="panel preview" aria-labelledby="pv">
+      <div class="preview-head">
+        <div>
+          <h2 id="pv">ตรวจชื่อก่อนบันทึก</h2>
+          <div class="summary" id="summary"></div>
+        </div>
+        <div class="toolbar">
+          <label class="sr-only" for="sortBy">เรียงลำดับ</label>
+          <select id="sortBy">
+            <option value="added">เรียงตามลำดับที่เพิ่ม</option>
+            <option value="name">เรียงตามชื่อไฟล์</option>
+            <option value="date">เรียงตามวันที่แก้ไข</option>
+            <option value="size">เรียงตามขนาด</option>
+          </select>
+          <button type="button" class="btn btn--quiet btn--sm" id="resetCustom">ล้างชื่อที่แก้เอง</button>
+          <button type="button" class="btn btn--quiet btn--sm" id="clearAll">ล้างรายการ</button>
+        </div>
+      </div>
+      <div class="sample-bar" id="sampleBar">
+        <span>กำลังแสดงไฟล์ตัวอย่าง เพิ่มไฟล์ของคุณแล้วตัวอย่างจะหายไปเอง</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th class="c-no">#</th><th>ชื่อเดิม</th><th>ชื่อใหม่</th><th>สถานะ</th><th class="c-act"><span class="sr-only">นำออก</span></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>ยังไม่มีไฟล์ เพิ่มไฟล์หรือโฟลเดอร์ในขั้นที่ 1</div>
+      </div>
+      <p class="hint">ลำดับเลขกำกับเป็นไปตามลำดับในตาราง ชื่อที่ซ้ำกันนับแยกตามโฟลเดอร์ปลายทาง และไม่สนตัวพิมพ์เล็กใหญ่</p>
+    </section>
+  </div>
+</main>
+
+<footer class="app-footer">
+  <div class="wrap">
+    <p><b>ความเป็นส่วนตัว (PDPA)</b> Alvis Renamer ทำงานในเบราว์เซอร์บนเครื่องของคุณเท่านั้น ไฟล์ ชื่อไฟล์ และเนื้อหาในไฟล์ไม่ถูกอัปโหลด ส่งต่อ หรือจัดเก็บบนเซิร์ฟเวอร์ใด ไม่ใช้คุกกี้หรือเครื่องมือติดตาม เบราว์เซอร์จะจำไว้เพียงค่าการตั้งชื่อของคุณ ซึ่งลบได้ด้วยการล้างข้อมูลเว็บไซต์ หากชื่อไฟล์มีข้อมูลส่วนบุคคล โปรดใช้และเก็บรักษาตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>
+    <p>Alvis Renamer 1.0</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const ICON_UNDO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>';
+  const JUNK = /^(\.DS_Store|Thumbs\.db|desktop\.ini|\._.*)$/i;
+  const BAD_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
+  const SETTINGS_KEY = 'alvis-renamer:settings';
+
+  let items = [];     // {id, file, dir, base, ext, custom, sample, order}
+  let nextId = 1;
+  let destHandle = null;
+  let busy = false;
+
+  const fsSupported = 'showDirectoryPicker' in window;
+  const inFrame = (() => { try { return window.self !== window.top; } catch { return true; } })();
+
+  /* ---------- settings ---------- */
+  const controls = ['newName', 'prefix', 'suffix', 'sep', 'digits', 'customTpl', 'startAt', 'numberAll', 'keepTree', 'sortBy'];
+  function readSettings() {
+    return {
+      mode: document.querySelector('input[name="mode"]:checked').value,
+      newName: $('newName').value,
+      prefix: $('prefix').value,
+      suffix: $('suffix').value,
+      sep: $('sep').value,
+      digits: +$('digits').value,
+      customTpl: $('customTpl').value,
+      startAt: Math.max(0, parseInt($('startAt').value, 10) || 0),
+      numberAll: $('numberAll').checked,
+      keepTree: $('keepTree').checked,
+      sortBy: $('sortBy').value,
+    };
+  }
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(readSettings())); } catch {}
+  }
+  function loadSettings() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); } catch {}
+    if (!s) { $('newName').value = 'ภาพกิจกรรม'; return; }
+    (s.mode === 'affix' ? $('modeAffix') : $('modeReplace')).checked = true;
+    for (const k of controls) {
+      if (!(k in s)) continue;
+      const el = $(k);
+      if (el.type === 'checkbox') el.checked = !!s[k]; else el.value = s[k];
+    }
+  }
+
+  /* ---------- naming ---------- */
+  function splitName(name) {
+    const i = name.lastIndexOf('.');
+    return i > 0 ? { base: name.slice(0, i), ext: name.slice(i) } : { base: name, ext: '' };
+  }
+  function sanitize(base) {
+    const cleaned = base.replace(BAD_CHARS, '_').replace(/[. ]+$/, '');
+    return { name: cleaned, changed: cleaned !== base };
+  }
+  function suffixTpl(s) {
+    if (s.sep !== 'custom') return s.sep;
+    return s.customTpl.includes('{n}') ? s.customTpl : s.customTpl + '{n}';
+  }
+  function numberSuffix(s, n) {
+    return suffixTpl(s).split('{n}').join(String(n).padStart(s.digits, '0'));
+  }
+  function wantedBase(it, s) {
+    if (it.custom != null) return it.custom;
+    if (s.mode === 'replace') return s.newName.trim() ? s.newName.trim() : it.base;
+    return s.prefix + it.base + s.suffix;
+  }
+  function scopeOf(it, s) { return s.keepTree ? it.dir : ''; }
+
+  function ordered(s) {
+    const list = items.slice();
+    const cmp = new Intl.Collator('th', { numeric: true, sensitivity: 'base' }).compare;
+    if (s.sortBy === 'name') list.sort((a, b) => cmp(a.dir, b.dir) || cmp(a.file.name, b.file.name));
+    else if (s.sortBy === 'date') list.sort((a, b) => a.file.lastModified - b.file.lastModified);
+    else if (s.sortBy === 'size') list.sort((a, b) => a.file.size - b.file.size);
+    else list.sort((a, b) => a.order - b.order);
+    return list;
+  }
+
+  // existing: Map(scope -> Set(lowercased names)) already in the destination
+  function computePlan(existing) {
+    const s = readSettings();
+    const list = ordered(s);
+    const groupSize = new Map();
+    const prepared = list.map((it) => {
+      const raw = wantedBase(it, s);
+      const { name, changed } = sanitize(raw);
+      const scope = scopeOf(it, s);
+      const key = scope + '\u0000' + (name + it.ext).toLowerCase();
+      groupSize.set(key, (groupSize.get(key) || 0) + 1);
+      return { it, base: name, sanitized: changed, scope, key };
+    });
+    const taken = new Map();
+    const counters = new Map();
+    const seen = new Map();
+    const plan = [];
+    for (const p of prepared) {
+      if (!taken.has(p.scope)) taken.set(p.scope, new Set(existing && existing.get(p.scope) ? existing.get(p.scope) : []));
+      const set = taken.get(p.scope);
+      const lc = (p.base + p.it.ext).toLowerCase();
+      const pos = seen.get(p.key) || 0;
+      seen.set(p.key, pos + 1);
+      const isDupGroup = groupSize.get(p.key) > 1;
+      let finalBase = p.base;
+      let numbered = false;
+      if (!p.base) {
+        plan.push({ ...p, finalBase: '', numbered: false, error: 'empty' });
+        continue;
+      }
+      const needNumber = set.has(lc) || (isDupGroup && (pos > 0 || s.numberAll));
+      if (needNumber) {
+        let n = counters.has(p.key) ? counters.get(p.key) : s.startAt;
+        let cand;
+        do { cand = p.base + numberSuffix(s, n); n++; } while (set.has((cand + p.it.ext).toLowerCase()));
+        counters.set(p.key, n);
+        finalBase = cand;
+        numbered = true;
+      }
+      set.add((finalBase + p.it.ext).toLowerCase());
+      plan.push({ ...p, finalBase, numbered, error: null });
+    }
+    return plan;
+  }
+
+  /* ---------- rendering ---------- */
+  const rowEls = new Map();
+  function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    const u = ['KB', 'MB', 'GB']; let i = -1;
+    do { b /= 1024; i++; } while (b >= 1024 && i < u.length - 1);
+    return b.toFixed(b < 10 ? 1 : 0) + ' ' + u[i];
+  }
+  function esc(t) { return t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  function renderRows() {
+    const s = readSettings();
+    const tbody = $('rows');
+    tbody.textContent = '';
+    rowEls.clear();
+    const list = ordered(s);
+    const frag = document.createDocumentFragment();
+    list.forEach((it, i) => {
+      const tr = document.createElement('tr');
+      tr.dataset.id = it.id;
+      const where = it.dir ? esc(it.dir) : 'โฟลเดอร์หลัก';
+      tr.innerHTML =
+        '<td class="c-no">' + (i + 1) + '</td>' +
+        '<td class="c-old">' + esc(it.file.name) + '<small>' + where + ' · ' + fmtSize(it.file.size) + '</small></td>' +
+        '<td class="c-new"><div class="new-name"><input type="text" autocomplete="off" aria-label="ชื่อใหม่ของ ' + esc(it.file.name) + '"><span class="ext">' + esc(it.ext) + '</span></div></td>' +
+        '<td class="c-state"></td>' +
+        '<td class="c-act"><button type="button" class="icon-btn" data-act="remove" aria-label="นำ ' + esc(it.file.name) + ' ออก" title="นำออก">' + ICON_X + '</button></td>';
+      frag.appendChild(tr);
+      rowEls.set(it.id, { tr, input: tr.querySelector('input'), state: tr.querySelector('.c-state') });
+    });
+    tbody.appendChild(frag);
+    $('empty').hidden = items.length > 0;
+    $('sampleBar').hidden = !items.some((it) => it.sample);
+    updateNames();
+  }
+
+  function updateNames() {
+    const plan = computePlan(null);
+    let numberedCount = 0, customCount = 0, errCount = 0;
+    for (const p of plan) {
+      const r = rowEls.get(p.it.id);
+      if (!r) continue;
+      if (document.activeElement !== r.input) r.input.value = p.finalBase;
+      r.input.classList.toggle('is-custom', p.it.custom != null);
+      const tags = [];
+      if (p.error) { tags.push('<span class="tag tag--warn">ชื่อว่าง</span>'); errCount++; }
+      if (p.it.custom != null) { tags.push('<span class="tag tag--custom">แก้เอง</span> <button type="button" class="icon-btn" data-act="reset" aria-label="ใช้ชื่อตามการตั้งค่า" title="ใช้ชื่อตามการตั้งค่า">' + ICON_UNDO + '</button>'); customCount++; }
+      if (p.numbered) { tags.push('<span class="tag">ใส่เลขกำกับ</span>'); numberedCount++; }
+      if (p.sanitized) tags.push('<span class="tag tag--warn">แทนอักขระต้องห้าม</span>');
+      if (!tags.length && p.finalBase + p.it.ext === p.it.file.name) tags.push('<span class="tag tag--same">ชื่อเดิม</span>');
+      const html = tags.join(' ');
+      if (r.state.innerHTML !== html) r.state.innerHTML = html;
+    }
+    const folders = new Set(items.map((it) => it.dir)).size;
+    const total = items.reduce((a, it) => a + it.file.size, 0);
+    $('summary').innerHTML = items.length
+      ? '<span><b>' + items.length.toLocaleString('th-TH') + '</b> ไฟล์</span>' +
+        '<span><b>' + folders.toLocaleString('th-TH') + '</b> โฟลเดอร์</span>' +
+        '<span><b>' + numberedCount.toLocaleString('th-TH') + '</b> ใส่เลขกำกับ</span>' +
+        (customCount ? '<span><b>' + customCount + '</b> แก้เอง</span>' : '') +
+        '<span>' + fmtSize(total) + '</span>'
+      : '<span>ยังไม่มีไฟล์</span>';
+    const ready = items.length > 0 && errCount === 0 && !busy;
+    $('saveBtn').disabled = !ready || !destHandle;
+    $('zipBtn').disabled = !ready;
+    if (errCount) setStatus('มี ' + errCount + ' ไฟล์ที่ชื่อว่าง พิมพ์ชื่อในตารางก่อนบันทึก', 'err');
+    else if ($('status').dataset.kind === 'err-name') setStatus('');
+    renderExample();
+  }
+
+  function renderExample() {
+    const s = readSettings();
+    const base = s.mode === 'replace' ? (s.newName.trim() || 'ชื่อไฟล์') : s.prefix + 'ชื่อไฟล์' + s.suffix;
+    const names = [];
+    for (let i = 0; i < 3; i++) {
+      if (i === 0 && !s.numberAll) names.push(base + '.jpg');
+      else names.push(base + numberSuffix(s, s.startAt + (s.numberAll ? i : i - 1)) + '.jpg');
+    }
+    $('example').innerHTML = '<b>ตัวอย่างเมื่อมี 3 ไฟล์ชื่อซ้ำ</b>' + names.map(esc).join('<br>');
+  }
+
+  function setStatus(msg, kind) {
+    const el = $('status');
+    el.textContent = msg;
+    el.className = 'status' + (kind === 'ok' ? ' is-ok' : kind === 'err' ? ' is-err' : '');
+    el.dataset.kind = kind === 'err' && msg.includes('ชื่อว่าง') ? 'err-name' : (kind || '');
+  }
+
+  /* ---------- adding files ---------- */
+  function addEntries(entries) {
+    if (items.some((it) => it.sample)) items = items.filter((it) => !it.sample);
+    const known = new Set(items.map((it) => it.dir + '/' + it.file.name + '|' + it.file.size + '|' + it.file.lastModified));
+    let added = 0, skipped = 0;
+    for (const { file, dir } of entries) {
+      if (JUNK.test(file.name)) { skipped++; continue; }
+      const sig = dir + '/' + file.name + '|' + file.size + '|' + file.lastModified;
+      if (known.has(sig)) { skipped++; continue; }
+      known.add(sig);
+      const { base, ext } = splitName(file.name);
+      items.push({ id: nextId++, file, dir, base, ext, custom: null, sample: false, order: nextId });
+      added++;
+    }
+    renderRows();
+    setStatus('เพิ่ม ' + added.toLocaleString('th-TH') + ' ไฟล์' + (skipped ? ' (ข้ามไฟล์ระบบหรือไฟล์ที่เพิ่มแล้ว ' + skipped + ' ไฟล์)' : ''), 'ok');
+  }
+
+  function fromInput(input) {
+    const list = [...input.files].map((file) => {
+      const rel = file.webkitRelativePath || '';
+      const dir = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '';
+      return { file, dir };
+    });
+    input.value = '';
+    if (list.length) addEntries(list);
+  }
+
+  async function walk(entry, dir, out) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      out.push({ file, dir });
+    } else if (entry.isDirectory) {
+      const sub = dir ? dir + '/' + entry.name : entry.name;
+      const reader = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise((res, rej) => reader.readEntries(res, rej));
+        for (const child of batch) await walk(child, sub, out);
+      } while (batch.length);
+    }
+  }
+
+  async function fromDrop(dt) {
+    const entries = [...dt.items].filter((i) => i.kind === 'file').map((i) => i.webkitGetAsEntry ? i.webkitGetAsEntry() : null);
+    const files = [...dt.files];
+    if (!entries.some(Boolean)) return files.map((file) => ({ file, dir: '' }));
+    const out = [];
+    for (const e of entries) if (e) await walk(e, '', out);
+    return out;
+  }
+
+  /* ---------- destination folder ---------- */
+  async function pickDest() {
+    if (!fsSupported) return;
+    try {
+      destHandle = await window.showDirectoryPicker({ id: 'alvis-dest', mode: 'readwrite' });
+      $('destName').textContent = destHandle.name;
+      $('destLabel').classList.remove('is-empty');
+      setStatus('');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      setStatus('เปิดหน้าต่างเลือกโฟลเดอร์ไม่ได้ในหน้านี้ ให้เปิดไฟล์ alvis-renamer.html ใน Chrome หรือ Edge โดยตรง หรือใช้ปุ่มดาวน์โหลด ZIP', 'err');
+    }
+    updateNames();
+  }
+
+  async function getDir(root, path, create) {
+    let dh = root;
+    if (!path) return dh;
+    for (const part of path.split('/')) {
+      try { dh = await dh.getDirectoryHandle(part, { create }); }
+      catch (e) { if (!create && e.name === 'NotFoundError') return null; throw e; }
+    }
+    return dh;
+  }
+
+  async function saveToFolder() {
+    if (!destHandle || busy) return;
+    try {
+      let perm = await destHandle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') perm = await destHandle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') { setStatus('ไม่ได้รับสิทธิ์เขียนลงโฟลเดอร์ปลายทาง ลองเลือกโฟลเดอร์ใหม่อีกครั้ง', 'err'); return; }
+    } catch {}
+    busy = true; updateNames();
+    const prog = $('progress');
+    prog.hidden = false; prog.value = 0;
+    try {
+      setStatus('กำลังตรวจชื่อไฟล์ที่มีอยู่ในปลายทาง…');
+      const s = readSettings();
+      const existing = new Map();
+      for (const scope of new Set(items.map((it) => scopeOf(it, s)))) {
+        const dh = await getDir(destHandle, scope, false);
+        if (!dh) continue;
+        const set = new Set();
+        for await (const name of dh.keys()) set.add(name.toLowerCase());
+        existing.set(scope, set);
+      }
+      const preview = new Map(computePlan(null).map((p) => [p.it.id, p.finalBase]));
+      const plan = computePlan(existing);
+      const bumped = plan.filter((p) => preview.get(p.it.id) !== p.finalBase).length;
+      let done = 0;
+      for (const p of plan) {
+        const dh = await getDir(destHandle, p.scope, true);
+        const fh = await dh.getFileHandle(p.finalBase + p.it.ext, { create: true });
+        const w = await fh.createWritable();
+        await w.write(p.it.file);
+        await w.close();
+        done++;
+        prog.value = Math.round((done / plan.length) * 100);
+        if (done % 10 === 0) setStatus('กำลังบันทึก ' + done + ' / ' + plan.length + ' ไฟล์…');
+      }
+      setStatus('บันทึกแล้ว ' + done.toLocaleString('th-TH') + ' ไฟล์ลงโฟลเดอร์ ' + destHandle.name +
+        (bumped ? ' โดยมี ' + bumped + ' ไฟล์ที่ชื่อชนกับไฟล์เดิมในปลายทางจึงใส่เลขกำกับเพิ่ม' : ''), 'ok');
+    } catch (e) {
+      setStatus('บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : e) + ' ไฟล์ที่บันทึกไปแล้วยังอยู่ในปลายทาง', 'err');
+    } finally {
+      busy = false; prog.hidden = true; updateNames();
+    }
+  }
+
+  /* ---------- ZIP (store only, UTF-8 names) ---------- */
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function dosTime(ms) {
+    const d = new Date(ms || Date.now());
+    const y = Math.max(1980, d.getFullYear());
+    return { time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date: ((y - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate() };
+  }
+  async function buildZip(entries, onProgress) {
+    const enc = new TextEncoder();
+    const parts = [], central = [];
+    let offset = 0, cdSize = 0;
+    for (let i = 0; i < entries.length; i++) {
+      const { path, file } = entries[i];
+      const data = new Uint8Array(await file.arrayBuffer());
+      const crc = crc32(data);
+      const name = enc.encode(path);
+      const { time, date } = dosTime(file.lastModified);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(8, 0, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+      lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(lh.buffer, name, file);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true);
+      ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+      ch.setUint16(28, name.length, true); ch.setUint32(38, 0, true); ch.setUint32(42, offset, true);
+      central.push(ch.buffer, name);
+      offset += 30 + name.length + data.length;
+      cdSize += 46 + name.length;
+      onProgress(i + 1, entries.length);
+    }
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+  }
+
+  async function downloadZip() {
+    if (busy) return;
+    const total = items.reduce((a, it) => a + it.file.size, 0);
+    if (items.length > 65000 || total > 3.8 * 1024 ** 3) {
+      setStatus('ไฟล์มากหรือใหญ่เกินกว่าจะรวมเป็น ZIP เดียว (สูงสุดราว 3.8 GB หรือ 65,000 ไฟล์) ให้แบ่งเป็นหลายรอบ หรือใช้การบันทึกลงโฟลเดอร์ใน Chrome/Edge', 'err');
+      return;
+    }
+    busy = true; updateNames();
+    const prog = $('progress');
+    prog.hidden = false; prog.value = 0;
+    try {
+      const plan = computePlan(null);
+      const entries = plan.map((p) => ({ path: (p.scope ? p.scope + '/' : '') + p.finalBase + p.it.ext, file: p.it.file }));
+      const blob = await buildZip(entries, (d, n) => { prog.value = Math.round((d / n) * 100); if (d % 10 === 0) setStatus('กำลังรวมไฟล์ ' + d + ' / ' + n + '…'); });
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'alvis-renamed-' + stamp + '.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      setStatus('สร้างไฟล์ ZIP แล้ว (' + fmtSize(blob.size) + ') หากไม่มีหน้าต่างดาวน์โหลด ให้เปิดไฟล์ alvis-renamer.html โดยตรงแล้วลองอีกครั้ง', 'ok');
+    } catch (e) {
+      setStatus('สร้าง ZIP ไม่สำเร็จ: ' + (e && e.message ? e.message : e), 'err');
+    } finally {
+      busy = false; prog.hidden = true; updateNames();
+    }
+  }
+
+  /* ---------- samples ---------- */
+  function loadSamples() {
+    const t = Date.now();
+    const sample = [
+      ['IMG_2031.jpg', 'ค่ายวิทยาศาสตร์/วันที่ 1', 2_480_000],
+      ['IMG_2032.jpg', 'ค่ายวิทยาศาสตร์/วันที่ 1', 2_310_000],
+      ['IMG_2047.jpg', 'ค่ายวิทยาศาสตร์/วันที่ 1', 2_650_000],
+      ['DSC00112.JPG', 'ค่ายวิทยาศาสตร์/วันที่ 2', 3_120_000],
+      ['DSC00113.JPG', 'ค่ายวิทยาศาสตร์/วันที่ 2', 3_040_000],
+      ['สรุปผลโครงการ.pdf', 'ค่ายวิทยาศาสตร์', 845_000],
+    ];
+    items = sample.map(([name, dir, size], i) => {
+      const file = new File([new Uint8Array(Math.min(size, 64))], name, { lastModified: t - (sample.length - i) * 60000 });
+      Object.defineProperty(file, 'size', { value: size });
+      const { base, ext } = splitName(name);
+      return { id: nextId++, file, dir, base, ext, custom: null, sample: true, order: nextId };
+    });
+  }
+
+  /* ---------- wiring ---------- */
+  function syncModeUI() {
+    const s = readSettings();
+    $('replaceFields').hidden = s.mode !== 'replace';
+    $('affixFields').hidden = s.mode !== 'affix';
+    $('customWrap').hidden = s.sep !== 'custom';
+  }
+  function onSettingsChange(e) {
+    syncModeUI(); saveSettings();
+    if (e && e.target && e.target.id === 'sortBy') renderRows(); else updateNames();
+  }
+
+  document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener('change', onSettingsChange));
+  for (const k of controls) {
+    $(k).addEventListener('input', onSettingsChange);
+    $(k).addEventListener('change', onSettingsChange);
+  }
+  $('pickFiles').addEventListener('click', () => $('fileInput').click());
+  $('pickFolder').addEventListener('click', () => $('folderInput').click());
+  $('fileInput').addEventListener('change', (e) => fromInput(e.target));
+  $('folderInput').addEventListener('change', (e) => fromInput(e.target));
+
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('is-over'); }));
+  ['dragleave', 'dragend'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('is-over')));
+  drop.addEventListener('drop', async (e) => {
+    e.preventDefault(); drop.classList.remove('is-over');
+    setStatus('กำลังอ่านรายการไฟล์…');
+    try { addEntries(await fromDrop(e.dataTransfer)); }
+    catch (err) { setStatus('อ่านไฟล์ที่ลากมาไม่ได้: ' + (err && err.message ? err.message : err), 'err'); }
+  });
+  // Dropping outside the zone should not open the file in the tab.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => { if (!drop.contains(e.target)) e.preventDefault(); });
+
+  $('rows').addEventListener('input', (e) => {
+    const tr = e.target.closest('tr'); if (!tr) return;
+    const it = items.find((x) => x.id === +tr.dataset.id); if (!it) return;
+    it.custom = e.target.value;
+    updateNames();
+  });
+  $('rows').addEventListener('focusout', (e) => {
+    const tr = e.target.closest('tr'); if (!tr || e.target.tagName !== 'INPUT') return;
+    const it = items.find((x) => x.id === +tr.dataset.id);
+    if (it && it.custom != null && !it.custom.trim()) it.custom = null;
+    updateNames();
+  });
+  $('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]'); if (!btn) return;
+    const id = +btn.closest('tr').dataset.id;
+    if (btn.dataset.act === 'remove') { items = items.filter((x) => x.id !== id); renderRows(); }
+    if (btn.dataset.act === 'reset') { const it = items.find((x) => x.id === id); if (it) it.custom = null; updateNames(); }
+  });
+  $('resetCustom').addEventListener('click', () => { items.forEach((it) => { it.custom = null; }); updateNames(); });
+  $('clearAll').addEventListener('click', () => { items = []; renderRows(); setStatus(''); });
+  $('pickDest').addEventListener('click', pickDest);
+  $('saveBtn').addEventListener('click', saveToFolder);
+  $('zipBtn').addEventListener('click', downloadZip);
+
+  if (!fsSupported) {
+    $('fsBlock').hidden = true;
+    $('fsNote').hidden = false;
+    $('fsNote').textContent = 'เบราว์เซอร์นี้บันทึกลงโฟลเดอร์โดยตรงไม่ได้ ใช้ปุ่มดาวน์โหลด ZIP แทน หากต้องการเลือกโฟลเดอร์ปลายทาง ให้เปิดด้วย Chrome หรือ Edge บนคอมพิวเตอร์';
+    $('zipBtn').className = 'btn btn--dark btn--block';
+    $('zipBtn').textContent = 'ดาวน์โหลดเป็นไฟล์ ZIP';
+  } else if (inFrame) {
+    $('fsNote').hidden = false;
+    $('fsNote').textContent = 'หน้านี้เป็นตัวอย่างสำหรับดู การบันทึกลงโฟลเดอร์และดาวน์โหลด ZIP ใช้ได้เมื่อเปิดไฟล์ alvis-renamer.html ใน Chrome หรือ Edge โดยตรง';
+  }
+
+  loadSettings();
+  syncModeUI();
+  loadSamples();
+  renderRows();
+})();
+</script>
+</body>
+</html>
