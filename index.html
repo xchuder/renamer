@@ -104,10 +104,10 @@ input:focus-visible, select:focus-visible { outline-offset: 1px; border-color: v
 input:disabled { background: var(--surface-page); color: var(--ink-muted); }
 .check { display: flex; align-items: flex-start; gap: var(--space-2); font-size: 0.95rem; line-height: 1.5; cursor: pointer; }
 .check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--brand-blue); flex: none; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); background: var(--surface-page); border-radius: var(--radius-md); padding: var(--space-1); }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1); background: var(--surface-page); border-radius: var(--radius-md); padding: var(--space-1); }
 .seg label { position: relative; }
 .seg input { position: absolute; opacity: 0; inset: 0; }
-.seg span { display: block; text-align: center; padding: var(--space-2); border-radius: var(--radius-sm); font: 600 0.9rem/1.5 var(--font-display); color: var(--ink-muted); cursor: pointer; }
+.seg span { display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; padding: var(--space-2) var(--space-1); border-radius: var(--radius-sm); font: 600 0.82rem/1.4 var(--font-display); color: var(--ink-muted); cursor: pointer; }
 .seg input:checked + span { background: var(--surface-card); color: var(--brand-blue); box-shadow: var(--shadow-sm); }
 .seg input:focus-visible + span { outline: 3px solid var(--brand-blue); outline-offset: 1px; }
 .example { background: var(--surface-tint); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); font: 400 0.85rem/1.6 var(--font-mono); color: var(--brand-navy); overflow-wrap: anywhere; }
@@ -116,6 +116,9 @@ input:disabled { background: var(--surface-page); color: var(--ink-muted); }
 .dest svg { width: 20px; height: 20px; color: var(--brand-blue); flex: none; }
 .dest.is-empty { color: var(--ink-muted); border-style: dashed; }
 .notice { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-cream); font-size: 0.9rem; line-height: 1.5; }
+
+.map-box { display: flex; flex-direction: column; gap: var(--space-3); }
+.map-box .status { min-height: 0; }
 
 /* Preview */
 .preview { gap: var(--space-4); }
@@ -206,6 +209,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
         <div class="seg" role="radiogroup" aria-label="รูปแบบการตั้งชื่อ">
           <label><input type="radio" name="mode" value="replace" id="modeReplace" checked><span>ตั้งชื่อใหม่ทั้งหมด</span></label>
           <label><input type="radio" name="mode" value="affix" id="modeAffix"><span>เติมคำต้น/ท้ายชื่อ</span></label>
+          <label><input type="radio" name="mode" value="map" id="modeMap"><span>แมพจาก Excel/CSV</span></label>
         </div>
         <div id="replaceFields" class="field">
           <label class="field" for="newName"><span>ชื่อใหม่</span>
@@ -216,6 +220,26 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
         <div id="affixFields" class="field-row" hidden>
           <label class="field" for="prefix"><span>คำขึ้นต้น</span><input type="text" id="prefix" placeholder="เช่น 2569_" autocomplete="off"></label>
           <label class="field" for="suffix"><span>คำลงท้าย</span><input type="text" id="suffix" placeholder="เช่น _final" autocomplete="off"></label>
+        </div>
+        <div id="mapFields" class="map-box" hidden>
+          <div class="btn-row">
+            <button type="button" class="btn btn--dark" id="pickTable">เลือกไฟล์ Excel/CSV</button>
+            <button type="button" class="btn btn--line" id="exportList" title="ส่งออกชื่อไฟล์ที่เพิ่มไว้ เพื่อเอาไปกรอกชื่อใหม่ใน Excel">ส่งออกรายชื่อไฟล์เป็น CSV</button>
+          </div>
+          <input type="file" id="tableInput" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv" hidden>
+          <div class="dest is-empty" id="mapFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>
+            <span id="mapFileName">ยังไม่ได้เลือกไฟล์ตาราง</span>
+          </div>
+          <label class="field" for="sheetSel" id="sheetWrap" hidden><span>ชีต</span><select id="sheetSel"></select></label>
+          <label class="check" for="hasHeader"><input type="checkbox" id="hasHeader" checked>แถวแรกเป็นหัวตาราง</label>
+          <div class="field-row">
+            <label class="field" for="oldCol"><span>คอลัมน์ชื่อเดิม</span><select id="oldCol"></select></label>
+            <label class="field" for="newCol"><span>คอลัมน์ชื่อใหม่</span><select id="newCol"></select></label>
+          </div>
+          <label class="check" for="skipUnmatched"><input type="checkbox" id="skipUnmatched">ไม่บันทึกไฟล์ที่ไม่พบในตาราง</label>
+          <p class="status" id="mapMsg" role="status" aria-live="polite"></p>
+          <p class="hint">จับคู่ชื่อเดิมในตารางกับชื่อไฟล์ ทั้งแบบมีและไม่มีนามสกุล โดยไม่สนตัวพิมพ์เล็กใหญ่ ชื่อใหม่ใช้นามสกุลเดิมของไฟล์ ไฟล์ .xls รุ่นเก่าให้บันทึกเป็น .xlsx หรือ CSV ก่อน</p>
         </div>
         <p class="hint">แก้ชื่อรายไฟล์ได้ในตารางด้านขวา</p>
       </section>
@@ -310,7 +334,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
 
 <footer class="app-footer">
   <div class="wrap">
-    <p><b>ความเป็นส่วนตัว (PDPA)</b> Alvis Renamer ทำงานในเบราว์เซอร์บนเครื่องของคุณเท่านั้น ไฟล์ ชื่อไฟล์ และเนื้อหาในไฟล์ไม่ถูกอัปโหลด ส่งต่อ หรือจัดเก็บบนเซิร์ฟเวอร์ใด ไม่ใช้คุกกี้หรือเครื่องมือติดตาม เบราว์เซอร์จะจำไว้เพียงค่าการตั้งชื่อของคุณ ซึ่งลบได้ด้วยการล้างข้อมูลเว็บไซต์ หากชื่อไฟล์มีข้อมูลส่วนบุคคล โปรดใช้และเก็บรักษาตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>
+    <p><b>ความเป็นส่วนตัว (PDPA)</b> Alvis Renamer ทำงานในเบราว์เซอร์บนเครื่องของคุณเท่านั้น ไฟล์ ชื่อไฟล์ เนื้อหาในไฟล์ และไฟล์ Excel/CSV ที่ใช้แมพชื่อ ไม่ถูกอัปโหลด ส่งต่อ หรือจัดเก็บบนเซิร์ฟเวอร์ใด ไม่ใช้คุกกี้หรือเครื่องมือติดตาม เบราว์เซอร์จะจำไว้เพียงค่าการตั้งชื่อของคุณ ซึ่งลบได้ด้วยการล้างข้อมูลเว็บไซต์ หากชื่อไฟล์มีข้อมูลส่วนบุคคล โปรดใช้และเก็บรักษาตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>
     <p>Alvis Renamer 1.0</p>
   </div>
 </footer>
@@ -334,7 +358,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
   const inFrame = (() => { try { return window.self !== window.top; } catch { return true; } })();
 
   /* ---------- settings ---------- */
-  const controls = ['newName', 'prefix', 'suffix', 'sep', 'digits', 'customTpl', 'startAt', 'numberAll', 'keepTree', 'sortBy'];
+  const controls = ['newName', 'prefix', 'suffix', 'sep', 'digits', 'customTpl', 'startAt', 'numberAll', 'keepTree', 'sortBy', 'hasHeader', 'skipUnmatched'];
   function readSettings() {
     return {
       mode: document.querySelector('input[name="mode"]:checked').value,
@@ -348,6 +372,10 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
       numberAll: $('numberAll').checked,
       keepTree: $('keepTree').checked,
       sortBy: $('sortBy').value,
+      hasHeader: $('hasHeader').checked,
+      skipUnmatched: $('skipUnmatched').checked,
+      oldCol: parseInt($('oldCol').value, 10) || 0,
+      newCol: parseInt($('newCol').value, 10) || 0,
     };
   }
   function saveSettings() {
@@ -357,7 +385,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
     let s = null;
     try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); } catch {}
     if (!s) { $('newName').value = 'ภาพกิจกรรม'; return; }
-    (s.mode === 'affix' ? $('modeAffix') : $('modeReplace')).checked = true;
+    ({ affix: $('modeAffix'), map: $('modeMap') }[s.mode] || $('modeReplace')).checked = true;
     for (const k of controls) {
       if (!(k in s)) continue;
       const el = $(k);
@@ -383,6 +411,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
   }
   function wantedBase(it, s) {
     if (it.custom != null) return it.custom;
+    if (s.mode === 'map') { const m = lookupMap(it); return m ? m.base : it.base; }
     if (s.mode === 'replace') return s.newName.trim() ? s.newName.trim() : it.base;
     return s.prefix + it.base + s.suffix;
   }
@@ -401,7 +430,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
   // existing: Map(scope -> Set(lowercased names)) already in the destination
   function computePlan(existing) {
     const s = readSettings();
-    const list = ordered(s);
+    const list = ordered(s).filter((it) => !isSkipped(it, s));
     const groupSize = new Map();
     const prepared = list.map((it) => {
       const raw = wantedBase(it, s);
@@ -409,7 +438,7 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
       const scope = scopeOf(it, s);
       const key = scope + '\u0000' + (name + it.ext).toLowerCase();
       groupSize.set(key, (groupSize.get(key) || 0) + 1);
-      return { it, base: name, sanitized: changed, scope, key };
+      return { it, base: name, sanitized: changed, scope, key, mapped: s.mode === 'map' && !!lookupMap(it) };
     });
     const taken = new Map();
     const counters = new Map();
@@ -480,21 +509,38 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
   }
 
   function updateNames() {
+    const s = readSettings();
     const plan = computePlan(null);
-    let numberedCount = 0, customCount = 0, errCount = 0;
+    const inPlan = new Set(plan.map((p) => p.it.id));
+    let numberedCount = 0, customCount = 0, errCount = 0, unmatchedCount = 0;
     for (const p of plan) {
       const r = rowEls.get(p.it.id);
       if (!r) continue;
+      r.input.disabled = false;
       if (document.activeElement !== r.input) r.input.value = p.finalBase;
       r.input.classList.toggle('is-custom', p.it.custom != null);
       const tags = [];
       if (p.error) { tags.push('<span class="tag tag--warn">ชื่อว่าง</span>'); errCount++; }
       if (p.it.custom != null) { tags.push('<span class="tag tag--custom">แก้เอง</span> <button type="button" class="icon-btn" data-act="reset" aria-label="ใช้ชื่อตามการตั้งค่า" title="ใช้ชื่อตามการตั้งค่า">' + ICON_UNDO + '</button>'); customCount++; }
+      if (s.mode === 'map' && mapIndex && p.it.custom == null) {
+        if (p.mapped) tags.push('<span class="tag">แมพแล้ว</span>');
+        else { tags.push('<span class="tag tag--warn">ไม่พบในตาราง</span>'); unmatchedCount++; }
+      }
       if (p.numbered) { tags.push('<span class="tag">ใส่เลขกำกับ</span>'); numberedCount++; }
       if (p.sanitized) tags.push('<span class="tag tag--warn">แทนอักขระต้องห้าม</span>');
       if (!tags.length && p.finalBase + p.it.ext === p.it.file.name) tags.push('<span class="tag tag--same">ชื่อเดิม</span>');
       const html = tags.join(' ');
       if (r.state.innerHTML !== html) r.state.innerHTML = html;
+    }
+    let skippedCount = 0;
+    for (const it of items) {
+      if (inPlan.has(it.id)) continue;
+      const r = rowEls.get(it.id);
+      skippedCount++;
+      if (!r) continue;
+      r.input.disabled = true;
+      r.input.value = it.base;
+      r.state.innerHTML = '<span class="tag tag--same">ข้าม (ไม่พบในตาราง)</span>';
     }
     const folders = new Set(items.map((it) => it.dir)).size;
     const total = items.reduce((a, it) => a + it.file.size, 0);
@@ -503,19 +549,22 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
         '<span><b>' + folders.toLocaleString('th-TH') + '</b> โฟลเดอร์</span>' +
         '<span><b>' + numberedCount.toLocaleString('th-TH') + '</b> ใส่เลขกำกับ</span>' +
         (customCount ? '<span><b>' + customCount + '</b> แก้เอง</span>' : '') +
+        (unmatchedCount + skippedCount ? '<span><b>' + (unmatchedCount + skippedCount) + '</b> ไม่พบในตาราง</span>' : '') +
         '<span>' + fmtSize(total) + '</span>'
       : '<span>ยังไม่มีไฟล์</span>';
-    const ready = items.length > 0 && errCount === 0 && !busy;
+    const ready = plan.length > 0 && errCount === 0 && !busy;
     $('saveBtn').disabled = !ready || !destHandle;
     $('zipBtn').disabled = !ready;
+    $('exportList').disabled = !items.some((it) => !it.sample);
     if (errCount) setStatus('มี ' + errCount + ' ไฟล์ที่ชื่อว่าง พิมพ์ชื่อในตารางก่อนบันทึก', 'err');
     else if ($('status').dataset.kind === 'err-name') setStatus('');
     renderExample();
+    updateMapStatus(s);
   }
 
   function renderExample() {
     const s = readSettings();
-    const base = s.mode === 'replace' ? (s.newName.trim() || 'ชื่อไฟล์') : s.prefix + 'ชื่อไฟล์' + s.suffix;
+    const base = s.mode === 'replace' ? (s.newName.trim() || 'ชื่อไฟล์') : s.mode === 'map' ? 'ชื่อใหม่ในตาราง' : s.prefix + 'ชื่อไฟล์' + s.suffix;
     const names = [];
     for (let i = 0; i < 3; i++) {
       if (i === 0 && !s.numberAll) names.push(base + '.jpg');
@@ -740,15 +789,233 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
     });
   }
 
+  /* ---------- mapping table (Excel / CSV) ---------- */
+  let table = null;      // {name, sheets: [{name, rows}]}
+  let mapIndex = null;   // Map(normalised old name -> new name); null until a table is loaded
+  let mapInfo = { rows: 0, dup: 0 };
+  let mapError = '';
+  const normKey = (v) => String(v == null ? '' : v).normalize('NFC').trim().toLowerCase();
+
+  function lookupMap(it) {
+    if (!mapIndex) return null;
+    for (const key of [normKey(it.file.name), normKey(it.base)]) {
+      if (!mapIndex.has(key)) continue;
+      let val = mapIndex.get(key);
+      const ext = it.ext;
+      if (ext && val.length > ext.length && val.toLowerCase().endsWith(ext.toLowerCase())) val = val.slice(0, -ext.length);
+      return { key, base: val };
+    }
+    return null;
+  }
+  function isSkipped(it, s) { return s.mode === 'map' && s.skipUnmatched && !!mapIndex && !lookupMap(it); }
+
+  function colLetter(i) { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s; return s; }
+  const nonEmptyRow = (r) => r && r.some((x) => String(x).trim() !== '');
+
+  function decodeText(buf) {
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+    catch { return new TextDecoder('windows-874').decode(buf); }   // Thai Excel "CSV" is often TIS-620
+  }
+  function parseCsv(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const firstLine = text.split(/\r\n|\n|\r/, 1)[0] || '';
+    const count = (ch) => { let n = 0, q = false; for (const c of firstLine) { if (c === '"') q = !q; else if (c === ch && !q) n++; } return n; };
+    const delim = [',', ';', '\t'].map((d) => [d, count(d)]).sort((a, b) => b[1] - a[1])[0][0];
+    const rows = [];
+    let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c;
+      } else if (c === '"' && cell === '') q = true;
+      else if (c === delim) { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(nonEmptyRow);
+  }
+
+  async function inflateRaw(u8) {
+    const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  function readZip(buf) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf), dec = new TextDecoder();
+    let e = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+    if (e < 0) throw new Error('ไม่ใช่ไฟล์ .xlsx ที่ถูกต้อง');
+    const total = dv.getUint16(e + 10, true);
+    let p = dv.getUint32(e + 16, true);
+    const files = new Map();
+    for (let i = 0; i < total; i++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) break;
+      const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true);
+      const n = dv.getUint16(p + 28, true), x = dv.getUint16(p + 30, true), c = dv.getUint16(p + 32, true);
+      files.set(dec.decode(u8.subarray(p + 46, p + 46 + n)), { method, size, off: dv.getUint32(p + 42, true) });
+      p += 46 + n + x + c;
+    }
+    return async (name) => {
+      const f = files.get(name);
+      if (!f) return null;
+      const start = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true);
+      const data = u8.subarray(start, start + f.size);
+      return dec.decode(f.method === 0 ? data : await inflateRaw(data));
+    };
+  }
+  const parseXml = (t) => new DOMParser().parseFromString(t, 'application/xml');
+
+  async function parseXlsx(buf) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('เบราว์เซอร์นี้อ่าน .xlsx ไม่ได้ ใช้ไฟล์ CSV แทน หรือเปิดด้วย Chrome/Edge รุ่นล่าสุด');
+    const read = readZip(buf);
+    const wbText = await read('xl/workbook.xml');
+    if (!wbText) throw new Error('ไม่ใช่ไฟล์ .xlsx ที่ถูกต้อง');
+    const rels = new Map();
+    const relText = await read('xl/_rels/workbook.xml.rels');
+    if (relText) for (const r of parseXml(relText).getElementsByTagName('Relationship')) {
+      const t = r.getAttribute('Target') || '';
+      rels.set(r.getAttribute('Id'), t.startsWith('/') ? t.slice(1) : 'xl/' + t);
+    }
+    const shared = [];
+    const ssText = await read('xl/sharedStrings.xml');
+    if (ssText) for (const si of parseXml(ssText).getElementsByTagName('si')) {
+      let str = '';
+      for (const t of si.getElementsByTagName('t')) if (t.parentNode.nodeName !== 'rPh') str += t.textContent;
+      shared.push(str);
+    }
+    const sheets = [];
+    for (const sh of parseXml(wbText).getElementsByTagName('sheet')) {
+      const path = rels.get(sh.getAttribute('r:id'));
+      const text = path ? await read(path) : null;
+      if (!text) continue;
+      const rows = [];
+      for (const rowEl of parseXml(text).getElementsByTagName('row')) {
+        const cells = [];
+        for (const c of rowEl.getElementsByTagName('c')) {
+          const letters = (c.getAttribute('r') || '').replace(/[0-9]/g, '');
+          const ci = letters ? [...letters].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1 : cells.length;
+          const type = c.getAttribute('t');
+          let val = '';
+          if (type === 'inlineStr') val = [...c.getElementsByTagName('t')].map((t) => t.textContent).join('');
+          else {
+            const v = c.getElementsByTagName('v')[0];
+            if (v) val = type === 's' ? (shared[+v.textContent] ?? '') : v.textContent;
+          }
+          cells[ci] = val;
+        }
+        for (let i = 0; i < cells.length; i++) if (cells[i] === undefined) cells[i] = '';
+        rows.push(cells);
+      }
+      sheets.push({ name: sh.getAttribute('name') || 'Sheet', rows: rows.filter(nonEmptyRow) });
+    }
+    if (!sheets.length) throw new Error('ไม่พบข้อมูลในไฟล์');
+    return sheets;
+  }
+
+  const curSheet = () => table.sheets[parseInt($('sheetSel').value, 10) || 0];
+
+  function fillColumns() {
+    const sh = curSheet();
+    let n = 2;
+    for (const r of sh.rows.slice(0, 50)) n = Math.max(n, r.length);
+    n = Math.min(n, 200);
+    const head = $('hasHeader').checked ? (sh.rows[0] || []) : [];
+    const opts = [];
+    for (let c = 0; c < n; c++) {
+      const h = String(head[c] == null ? '' : head[c]).trim();
+      opts.push('<option value="' + c + '">' + esc(colLetter(c) + (h ? ' · ' + (h.length > 28 ? h.slice(0, 28) + '…' : h) : '')) + '</option>');
+    }
+    const prev = { o: $('oldCol').value, n: $('newCol').value };
+    $('oldCol').innerHTML = opts.join('');
+    $('newCol').innerHTML = opts.join('');
+    $('oldCol').value = prev.o !== '' && +prev.o < n ? prev.o : '0';
+    $('newCol').value = prev.n !== '' && +prev.n < n ? prev.n : '1';
+  }
+
+  function rebuildMap() {
+    if (!table) { mapIndex = null; return; }
+    const s = readSettings();
+    const rows = curSheet().rows;
+    mapIndex = new Map();
+    let dup = 0, used = 0;
+    for (let i = s.hasHeader ? 1 : 0; i < rows.length; i++) {
+      const oldKey = normKey(rows[i][s.oldCol]);
+      const newVal = String(rows[i][s.newCol] == null ? '' : rows[i][s.newCol]).trim();
+      if (!oldKey || !newVal) continue;
+      used++;
+      if (mapIndex.has(oldKey)) { dup++; continue; }
+      mapIndex.set(oldKey, newVal);
+    }
+    mapInfo = { rows: used, dup };
+  }
+
+  async function loadTable(file) {
+    mapError = '';
+    try {
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (ext === 'xls') throw new Error('ไฟล์ .xls รุ่นเก่าอ่านไม่ได้ ให้เปิดใน Excel แล้วบันทึกเป็น .xlsx หรือ CSV UTF-8');
+      const sheets = ['xlsx', 'xlsm', 'xltx', 'xltm'].includes(ext)
+        ? await parseXlsx(await file.arrayBuffer())
+        : [{ name: 'CSV', rows: parseCsv(decodeText(await file.arrayBuffer())) }];
+      if (!sheets.some((sh) => sh.rows.length)) throw new Error('ไฟล์นี้ไม่มีข้อมูล');
+      table = { name: file.name, sheets };
+      $('mapFileName').textContent = file.name;
+      $('mapFile').classList.remove('is-empty');
+      $('sheetSel').innerHTML = sheets.map((sh, i) => '<option value="' + i + '">' + esc(sh.name) + ' (' + sh.rows.length + ' แถว)</option>').join('');
+      $('sheetWrap').hidden = sheets.length < 2;
+      $('oldCol').innerHTML = ''; $('newCol').innerHTML = '';
+      fillColumns();
+      rebuildMap();
+    } catch (e) {
+      table = null; mapIndex = null;
+      $('mapFileName').textContent = 'ยังไม่ได้เลือกไฟล์ตาราง';
+      $('mapFile').classList.add('is-empty');
+      $('sheetWrap').hidden = true;
+      mapError = 'อ่านไฟล์ไม่สำเร็จ: ' + (e && e.message ? e.message : e);
+    }
+    updateNames();
+  }
+
+  function updateMapStatus(s) {
+    if (s.mode !== 'map') return;
+    const el = $('mapMsg');
+    const show = (t, kind) => { el.textContent = t; el.className = 'status' + (kind === 'ok' ? ' is-ok' : kind === 'err' ? ' is-err' : ''); };
+    if (mapError) return show(mapError, 'err');
+    if (!mapIndex) return show('ยังไม่ได้เลือกไฟล์ตาราง ในตารางต้องมีคอลัมน์ชื่อเดิมและคอลัมน์ชื่อใหม่', '');
+    const used = new Set();
+    let matched = 0;
+    for (const it of items) { const m = lookupMap(it); if (m) { matched++; used.add(m.key); } }
+    const unmatched = items.length - matched, unused = mapIndex.size - used.size;
+    show('อ่านได้ ' + mapInfo.rows.toLocaleString('th-TH') + ' แถว · ตรงกับไฟล์ ' + matched.toLocaleString('th-TH') + ' จาก ' + items.length.toLocaleString('th-TH') + ' ไฟล์' +
+      (unmatched ? ' · ไม่พบในตาราง ' + unmatched.toLocaleString('th-TH') : '') +
+      (unused ? ' · ในตารางมี ' + unused.toLocaleString('th-TH') + ' ชื่อที่ไม่มีไฟล์ตรงกัน' : '') +
+      (mapInfo.dup ? ' · ชื่อเดิมซ้ำในตาราง ' + mapInfo.dup + ' แถว (ใช้แถวแรก)' : ''),
+      matched && !unmatched ? 'ok' : '');
+  }
+
+  function exportList() {
+    const q = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+    const rows = [['ชื่อเดิม', 'ชื่อใหม่']].concat(ordered(readSettings()).filter((it) => !it.sample).map((it) => [it.file.name, '']));
+    const blob = new Blob(['﻿' + rows.map((r) => r.map(q).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'alvis-file-list.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    setStatus('ส่งออกรายชื่อไฟล์แล้ว เปิดใน Excel กรอกคอลัมน์ชื่อใหม่ แล้วนำกลับมาเลือกที่นี่', 'ok');
+  }
+
   /* ---------- wiring ---------- */
   function syncModeUI() {
     const s = readSettings();
     $('replaceFields').hidden = s.mode !== 'replace';
     $('affixFields').hidden = s.mode !== 'affix';
+    $('mapFields').hidden = s.mode !== 'map';
     $('customWrap').hidden = s.sep !== 'custom';
   }
   function onSettingsChange(e) {
     syncModeUI(); saveSettings();
+    if (e && e.target && e.target.id === 'hasHeader' && table) { fillColumns(); rebuildMap(); }
     if (e && e.target && e.target.id === 'sortBy') renderRows(); else updateNames();
   }
 
@@ -809,6 +1076,14 @@ progress { width: 100%; height: 8px; accent-color: var(--brand-blue); }
     $('fsNote').hidden = false;
     $('fsNote').textContent = 'หน้านี้เป็นตัวอย่างสำหรับดู การบันทึกลงโฟลเดอร์และดาวน์โหลด ZIP ใช้ได้เมื่อเปิดไฟล์ alvis-renamer.html ใน Chrome หรือ Edge โดยตรง';
   }
+
+  $('pickTable').addEventListener('click', () => $('tableInput').click());
+  $('tableInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) loadTable(f); });
+  ['sheetSel', 'oldCol', 'newCol'].forEach((id) => $(id).addEventListener('change', () => {
+    if (id === 'sheetSel') fillColumns();
+    rebuildMap(); updateNames();
+  }));
+  $('exportList').addEventListener('click', exportList);
 
   loadSettings();
   syncModeUI();
